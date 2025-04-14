@@ -79,49 +79,11 @@ async function main() {
     }
 }
 
-/**
- * Function to demo how to search for CVEs by vendor or product
- */
-async function searchDemo(searchType, searchValue) {
-    try {
-        await dbService.connect();
-
-        let results;
-        if (searchType === 'vendor') {
-            console.log(`Searching for CVEs by vendor: ${searchValue}`);
-            results = await dbService.getCVEsByVendor(searchValue);
-        } else if (searchType === 'product') {
-            console.log(`Searching for CVEs by product: ${searchValue}`);
-            results = await dbService.getCVEsByProduct(searchValue);
-        } else {
-            console.error('Invalid search type. Use "vendor" or "product"');
-            return;
-        }
-
-        console.log(`Found ${results.length} CVEs`);
-
-        results.slice(0, 5).forEach(cve => {
-            console.log(`- ${cve.cveId}: ${cve.description.substring(0, 100)}...`);
-        });
-
-        await dbService.disconnect();
-    } catch (error) {
-        console.error('Error in search demo:', error.message);
-        await dbService.disconnect();
-    }
-}
 
 // Run the main function
 if (require.main === module) {
-    // Check if search demo is requested
-    const args = process.argv.slice(2);
-    if (args.length >= 2 && args[0] === 'search') {
-        const searchType = args[1];
-        const searchValue = args[2];
-        searchDemo(searchType, searchValue);
-    } else {
-        main();
-    }
+    main();
+
 }
 
-module.exports = { main, searchDemo };
+module.exports = {main};

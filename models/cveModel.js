@@ -125,34 +125,38 @@ cveSchema.statics.fromRawData = function(rawData, sourceFile) {
         // Extract information about affected vendors and products
         // Will be used later to create/update Vendor and Product records
         if (rawData.affects?.vendor?.vendor_data) {
-            cveData._extractedVendorProducts = rawData.affects.vendor.vendor_data.map(vendor => {
-                const vendorData = {
-                    vendorName: vendor.vendor_name,
-                    products: []
-                };
+            cveData._extractedVendorProducts = rawData.affects.vendor.vendor_data
+                .filter(vendor => vendor.vendor_name && vendor.vendor_name.toLowerCase() !== "n/a")
+                .map(vendor => {
+                    const vendorData = {
+                        vendorName: vendor.vendor_name,
+                        products: []
+                    };
 
-                if (vendor.product?.product_data) {
-                    vendorData.products = vendor.product.product_data.map(product => {
-                        const productData = {
-                            productName: product.product_name,
-                            versions: []
-                        };
+                    if (vendor.product?.product_data) {
+                        vendorData.products = vendor.product.product_data
+                            .filter(product => product.product_name && product.product_name.toLowerCase() !== "n/a")
+                            .map(product => {
+                                const productData = {
+                                    productName: product.product_name,
+                                    versions: []
+                                };
 
-                        if (product.version?.version_data) {
-                            productData.versions = product.version.version_data.map(version => ({
-                                version: version.version_value,
-                                affected: version.version_affected === '=' ||
-                                    version.version_affected === '<=' ||
-                                    version.version_affected === '>='
-                            }));
-                        }
+                                if (product.version?.version_data) {
+                                    productData.versions = product.version.version_data.map(version => ({
+                                        version: version.version_value,
+                                        affected: version.version_affected === '=' ||
+                                            version.version_affected === '<=' ||
+                                            version.version_affected === '>='
+                                    }));
+                                }
 
-                        return productData;
-                    });
-                }
+                                return productData;
+                            });
+                    }
 
-                return vendorData;
-            });
+                    return vendorData;
+                });
         }
 
         // Extract CVSS score from impact

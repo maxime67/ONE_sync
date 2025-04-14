@@ -1,3 +1,4 @@
+// services/productService.js
 const Vendor = require('../models/vendorModel');
 const Product = require('../models/productModel');
 
@@ -9,6 +10,12 @@ class ProductService {
      */
     async findOrCreateVendor(vendorName) {
         try {
+            // Skip "n/a" vendors
+            if (vendorName === "n/a") {
+                console.log(`Skipping vendor with name "n/a"`);
+                return null;
+            }
+
             // First attempt to find the vendor
             let vendor = await Vendor.findOne({ name: vendorName });
 
@@ -58,6 +65,12 @@ class ProductService {
      */
     async findOrCreateProduct(productName, vendorId, vendorName, versions = []) {
         try {
+            // Skip "n/a" products
+            if (productName === "n/a") {
+                console.log(`Skipping product with name "n/a"`);
+                return null;
+            }
+
             const productData = {
                 name: productName,
                 vendorId,
@@ -97,9 +110,20 @@ class ProductService {
                     continue;
                 }
 
+                // Skip "n/a" vendors
+                if (vendorName.toLowerCase() === "n/a") {
+                    console.log(`Skipping "n/a" vendor in CVE ${cveData.cveId}`);
+                    continue;
+                }
+
                 try {
                     // Find or create the vendor
                     const vendor = await this.findOrCreateVendor(vendorName);
+
+                    // Skip if vendor is null (e.g., "n/a" case)
+                    if (!vendor) {
+                        continue;
+                    }
 
                     // Process each product for this vendor
                     for (const productData of vendorData.products || []) {
@@ -107,6 +131,12 @@ class ProductService {
 
                         if (!productName) {
                             console.warn(`Skipping product with no name for vendor ${vendorName} in CVE ${cveData.cveId}`);
+                            continue;
+                        }
+
+                        // Skip "n/a" products
+                        if (productName.toLowerCase() === "n/a") {
+                            console.log(`Skipping "n/a" product for vendor ${vendorName} in CVE ${cveData.cveId}`);
                             continue;
                         }
 
@@ -118,6 +148,11 @@ class ProductService {
                                 vendorName,
                                 productData.versions || []
                             );
+
+                            // Skip if product is null (e.g., "n/a" case)
+                            if (!product) {
+                                continue;
+                            }
 
                             // Add to the affected products list
                             affectedProducts.push({
@@ -170,11 +205,7 @@ class ProductService {
         }
     }
 
-    /**
-     * Get products for a specific vendor
-     * @param {string} vendorName - Name of the vendor
-     * @returns {Array} - Array of product documents
-     */
+    // Rest of the methods remain unchanged
     async getProductsByVendor(vendorName) {
         try {
             return await Product.find({ vendorName });
@@ -184,11 +215,6 @@ class ProductService {
         }
     }
 
-    /**
-     * Get CVEs for a specific product
-     * @param {string} productId - ID of the product
-     * @returns {Array} - Array of CVE documents
-     */
     async getCVEsByProduct(productId) {
         try {
             const CVE = require('../models/cveModel');
@@ -199,11 +225,6 @@ class ProductService {
         }
     }
 
-    /**
-     * Get CVEs for a specific vendor
-     * @param {string} vendorId - ID of the vendor
-     * @returns {Array} - Array of CVE documents
-     */
     async getCVEsByVendor(vendorId) {
         try {
             const CVE = require('../models/cveModel');
@@ -214,10 +235,6 @@ class ProductService {
         }
     }
 
-    /**
-     * Get vendor statistics
-     * @returns {Object} - Vendor statistics
-     */
     async getVendorStats() {
         try {
             const totalVendors = await Vendor.countDocuments();
@@ -239,10 +256,6 @@ class ProductService {
         }
     }
 
-    /**
-     * Get product statistics
-     * @returns {Object} - Product statistics
-     */
     async getProductStats() {
         try {
             const totalProducts = await Product.countDocuments();
