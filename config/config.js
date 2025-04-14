@@ -11,7 +11,7 @@ module.exports = {
         repoUrl: 'https://github.com/CVEProject/cvelist.git',
         localPath: './tmp/cvelist',
         // Specify the target folder to clone (to avoid cloning the entire repo)
-        targetFolder: '2025/3xxx', // Adjust as needed (e.g., '2025/3xxx', '2025/31xxx', etc.)
+        targetFolder: '2025', // Adjust as needed (e.g., '2025/3xxx', '2025/31xxx', etc.)
     },
 
     // Batch processing configuration

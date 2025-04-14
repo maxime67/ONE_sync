@@ -51,6 +51,8 @@ class DBService {
      */
     async upsertCVE(cveData, sourceFile) {
         try {
+            console.log(cveData);
+            // process.exit(1)
             const cveId = cveData.CVE_data_meta?.ID;
 
             if (!cveId) {
