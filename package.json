@@ -5,6 +5,7 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
+    "cron": "node services/cron.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {

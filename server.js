@@ -42,26 +42,6 @@ async function main(fullSync = false) {
 
         await fileService.processBatch(jsonFiles, processFunction);
 
-        // Get statistics from the database
-        console.log('Database Statistics:');
-        console.log(`Total CVEs: ${stats.cve.total}`);
-        console.log('By State:', stats.cve.byState);
-        console.log('By Severity:', stats.cve.bySeverity);
-
-        console.log('\nVendor Statistics:');
-        console.log(`Total Vendors: ${stats.vendors.totalVendors}`);
-        console.log('Top Vendors by CVE Count:');
-        stats.vendors.topVendors.forEach((vendor, index) => {
-            console.log(`${index + 1}. ${vendor.name}: ${vendor.cveCount} CVEs, ${vendor.productCount} products`);
-        });
-
-        console.log('\nProduct Statistics:');
-        console.log(`Total Products: ${stats.products.totalProducts}`);
-        console.log('Top Products by CVE Count:');
-        stats.products.topProducts.forEach((product, index) => {
-            console.log(`${index + 1}. ${product.name} (${product.vendor}): ${product.cveCount} CVEs`);
-        });
-
         // Disconnect from the database
         await dbService.disconnect();
 
