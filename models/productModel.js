@@ -41,9 +41,10 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ name: 1, vendor: 1 }, { unique: true });
 productSchema.index({ vendorName: 1 });
 
-// Static method to get or create a product
+// In models/productModel.js, update the findOrCreate static method:
+
 productSchema.statics.findOrCreate = async function(productData) {
-    const { name, vendorId, vendorName } = productData;
+    const { name, vendorId, vendorName, versions } = productData;
 
     try {
         // Look for an existing product
@@ -52,28 +53,45 @@ productSchema.statics.findOrCreate = async function(productData) {
             vendor: vendorId
         });
 
-        // If no product found, create a new one
         if (!product) {
-            product = await this.create({
-                name: name,
-                vendor: vendorId,
-                vendorName: vendorName,
-                versions: productData.versions || [],
-                firstSeen: new Date(),
-                lastSeen: new Date()
-            });
+            try {
+                // Try to create new product
+                product = await this.create({
+                    name: name,
+                    vendor: vendorId,
+                    vendorName: vendorName,
+                    versions: versions || [],
+                    firstSeen: new Date(),
+                    lastSeen: new Date()
+                });
+            } catch (createError) {
+                // If it's a duplicate key error, try to find the product again
+                if (createError.code === 11000) {
+                    console.log(`Product ${name} was created concurrently, fetching it now`);
+                    product = await this.findOne({
+                        name: name,
+                        vendor: vendorId
+                    });
+
+                    if (!product) {
+                        throw new Error(`Failed to find product ${name} after duplicate key error`);
+                    }
+                } else {
+                    throw createError; // Re-throw if it's not a duplicate key error
+                }
+            }
         } else {
             // Update the product
             product.lastSeen = new Date();
 
             // Update versions if provided
-            if (productData.versions && productData.versions.length > 0) {
+            if (versions && versions.length > 0) {
                 // Merge existing versions with new ones
                 const existingVersions = new Map(
                     product.versions.map(v => [v.version, v.affected])
                 );
 
-                productData.versions.forEach(v => {
+                versions.forEach(v => {
                     existingVersions.set(v.version, v.affected);
                 });
 
@@ -83,7 +101,24 @@ productSchema.statics.findOrCreate = async function(productData) {
                 }));
             }
 
-            await product.save();
+            try {
+                await product.save();
+            } catch (saveError) {
+                // If there's a version conflict, fetch the latest document
+                if (saveError.name === 'VersionError') {
+                    console.log(`Version conflict for product ${name}, fetching latest`);
+                    product = await this.findOne({
+                        name: name,
+                        vendor: vendorId
+                    });
+
+                    if (!product) {
+                        throw new Error(`Failed to find product ${name} after version error`);
+                    }
+                } else {
+                    throw saveError;
+                }
+            }
         }
 
         return product;

@@ -51,8 +51,6 @@ class DBService {
      */
     async upsertCVE(cveData, sourceFile) {
         try {
-            console.log(cveData);
-            // process.exit(1)
             const cveId = cveData.CVE_data_meta?.ID;
 
             if (!cveId) {
@@ -60,26 +58,55 @@ class DBService {
                 return null;
             }
 
-            // Extract data from raw JSON
-            const processedData = CVE.fromRawData(cveData, sourceFile);
+            try {
+                // Extract data from raw JSON
+                const processedData = CVE.fromRawData(cveData, sourceFile);
 
-            // Process vendor and product data
-            const affectedProducts = await productService.processVendorProducts(processedData);
+                try {
+                    // Process vendor and product data
+                    const affectedProducts = await productService.processVendorProducts(processedData);
 
-            // Assign affected products to the CVE data
-            processedData.affectedProducts = affectedProducts;
+                    // Assign affected products to the CVE data
+                    processedData.affectedProducts = affectedProducts;
 
-            // Remove the temporary extracted data field
-            delete processedData._extractedVendorProducts;
+                    // Remove the temporary extracted data field
+                    delete processedData._extractedVendorProducts;
 
-            // Update or insert the CVE record
-            const result = await CVE.findOneAndUpdate(
-                { cveId },
-                processedData,
-                { upsert: true, new: true, setDefaultsOnInsert: true }
-            );
+                    // Update or insert the CVE record
+                    try {
+                        const result = await CVE.findOneAndUpdate(
+                            { cveId },
+                            processedData,
+                            { upsert: true, new: true, setDefaultsOnInsert: true }
+                        );
+                        return result;
+                    } catch (upsertError) {
+                        console.error(`Error updating/inserting CVE ${cveId}: ${upsertError.message}`);
 
-            return result;
+                        // If there's a duplicate key error during upsert, try update then insert separately
+                        if (upsertError.code === 11000) {
+                            console.log(`Trying separate find and update for ${cveId}`);
+                            const existingCVE = await CVE.findOne({ cveId });
+                            if (existingCVE) {
+                                // Update existing record
+                                Object.assign(existingCVE, processedData);
+                                return await existingCVE.save();
+                            } else {
+                                // Create new record
+                                return await CVE.create(processedData);
+                            }
+                        } else {
+                            throw upsertError;
+                        }
+                    }
+                } catch (productsError) {
+                    console.error(`Error processing product data for CVE ${cveId}: ${productsError.message}`);
+                    throw productsError;
+                }
+            } catch (extractError) {
+                console.error(`Error extracting data for CVE ${cveId}: ${extractError.message}`);
+                throw extractError;
+            }
         } catch (error) {
             console.error(`Error upserting CVE: ${error.message}`);
             throw error;

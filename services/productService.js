@@ -9,17 +9,34 @@ class ProductService {
      */
     async findOrCreateVendor(vendorName) {
         try {
+            // First attempt to find the vendor
             let vendor = await Vendor.findOne({ name: vendorName });
 
             if (!vendor) {
-                vendor = await Vendor.create({
-                    name: vendorName,
-                    firstSeen: new Date(),
-                    lastSeen: new Date()
-                });
-                console.log(`Created new vendor: ${vendorName}`);
-            } else {
-                // Update the last seen date
+                try {
+                    // Try to create the vendor
+                    vendor = await Vendor.create({
+                        name: vendorName,
+                        firstSeen: new Date(),
+                        lastSeen: new Date()
+                    });
+                    console.log(`Created new vendor: ${vendorName}`);
+                } catch (createError) {
+                    // If error is duplicate key, try to find the vendor again
+                    if (createError.code === 11000) {
+                        console.log(`Vendor ${vendorName} was created concurrently, fetching it now`);
+                        vendor = await Vendor.findOne({ name: vendorName });
+                        if (!vendor) {
+                            throw new Error(`Failed to find vendor ${vendorName} after duplicate key error`);
+                        }
+                    } else {
+                        throw createError; // Re-throw if it's not a duplicate key error
+                    }
+                }
+            }
+
+            // Update the last seen date
+            if (vendor) {
                 vendor.lastSeen = new Date();
                 await vendor.save();
             }
@@ -80,58 +97,76 @@ class ProductService {
                     continue;
                 }
 
-                // Find or create the vendor
-                const vendor = await this.findOrCreateVendor(vendorName);
+                try {
+                    // Find or create the vendor
+                    const vendor = await this.findOrCreateVendor(vendorName);
 
-                // Process each product for this vendor
-                for (const productData of vendorData.products || []) {
-                    const productName = productData.productName;
+                    // Process each product for this vendor
+                    for (const productData of vendorData.products || []) {
+                        const productName = productData.productName;
 
-                    if (!productName) {
-                        console.warn(`Skipping product with no name for vendor ${vendorName} in CVE ${cveData.cveId}`);
-                        continue;
-                    }
+                        if (!productName) {
+                            console.warn(`Skipping product with no name for vendor ${vendorName} in CVE ${cveData.cveId}`);
+                            continue;
+                        }
 
-                    // Find or create the product
-                    const product = await this.findOrCreateProduct(
-                        productName,
-                        vendor._id,
-                        vendorName,
-                        productData.versions || []
-                    );
+                        try {
+                            // Find or create the product
+                            const product = await this.findOrCreateProduct(
+                                productName,
+                                vendor._id,
+                                vendorName,
+                                productData.versions || []
+                            );
 
-                    // Add to the affected products list
-                    affectedProducts.push({
-                        product: product._id,
-                        vendor: vendor._id,
-                        productName,
-                        vendorName,
-                        versions: productData.versions || []
-                    });
+                            // Add to the affected products list
+                            affectedProducts.push({
+                                product: product._id,
+                                vendor: vendor._id,
+                                productName,
+                                vendorName,
+                                versions: productData.versions || []
+                            });
 
-                    // Increment CVE counter for the product
-                    await Product.findByIdAndUpdate(
-                        product._id,
-                        { $inc: { cveCount: 1 } }
-                    );
-                }
-
-                // Increment CVE counter for the vendor
-                await Vendor.findByIdAndUpdate(
-                    vendor._id,
-                    {
-                        $inc: { cveCount: 1 },
-                        $set: {
-                            productCount: vendorData.products ? vendorData.products.length : 0
+                            // Increment CVE counter for the product
+                            try {
+                                await Product.findByIdAndUpdate(
+                                    product._id,
+                                    { $inc: { cveCount: 1 } }
+                                );
+                            } catch (counterError) {
+                                console.warn(`Failed to update CVE counter for product ${productName}: ${counterError.message}`);
+                            }
+                        } catch (productError) {
+                            console.error(`Error processing product ${productName} for vendor ${vendorName}: ${productError.message}`);
+                            // Continue with other products
                         }
                     }
-                );
+
+                    // Increment CVE counter for the vendor
+                    try {
+                        await Vendor.findByIdAndUpdate(
+                            vendor._id,
+                            {
+                                $inc: { cveCount: 1 },
+                                $set: {
+                                    productCount: vendorData.products ? vendorData.products.length : 0
+                                }
+                            }
+                        );
+                    } catch (vendorCountError) {
+                        console.warn(`Failed to update counter for vendor ${vendorName}: ${vendorCountError.message}`);
+                    }
+                } catch (vendorError) {
+                    console.error(`Error processing vendor ${vendorName}: ${vendorError.message}`);
+                    // Continue with other vendors
+                }
             }
 
             return affectedProducts;
         } catch (error) {
-            console.error(`Error processing vendor products for CVE ${cveData.cveId}:`, error.message);
-            throw error;
+            console.error(`Error processing vendor products for CVE ${cveData.cveId}: ${error.message}`);
+            return []; // Return empty array to allow the rest of the process to continue
         }
     }
 
