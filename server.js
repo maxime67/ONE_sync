@@ -5,30 +5,44 @@ const productService = require('./services/productService');
 
 /**
  * Main function to run the CVE import process
+ * @param {boolean} fullSync - Whether to process all files or just changed files
  */
-async function main() {
+async function main(fullSync = false) {
     try {
-        console.log('Starting CVE import process');
+        console.log(`Starting CVE import process (mode: ${fullSync ? 'full sync' : 'incremental'})`);
 
         // Step 1: Connect to the database
         await dbService.connect();
 
-        // Step 2: Clone target folder from the repository
-        await gitService.cloneTargetFolder();
+        let jsonFiles = [];
 
-        // Step 3: Get all JSON files
-        const jsonFiles = await gitService.getJsonFiles();
-        console.log(`Found ${jsonFiles.length} JSON files in target folder`);
+        if (fullSync) {
+            // Clone or pull the repository
+            await gitService.cloneTargetFolder();
+            // Get all JSON files for a full sync
+            jsonFiles = await gitService.getJsonFiles();
+            console.log(`Found ${jsonFiles.length} JSON files for full sync`);
+        } else {
+            // Sync repository and get only changed files
+            jsonFiles = await gitService.syncRepository();
+            console.log(`Found ${jsonFiles.length} changed JSON files for incremental sync`);
 
-        // Step 4: Process JSON files and insert into MongoDB
+            // If no files changed, we can exit early
+            if (jsonFiles.length === 0) {
+                console.log('No files changed. Nothing to process.');
+                await dbService.disconnect();
+                return;
+            }
+        }
+
+        // Process JSON files and insert into MongoDB
         const processFunction = async (data, sourceFile) => {
             await dbService.upsertCVE(data, sourceFile);
         };
 
         await fileService.processBatch(jsonFiles, processFunction);
 
-        // Step 5: Get statistics from the database
-        const stats = await dbService.getStats();
+        // Get statistics from the database
         console.log('Database Statistics:');
         console.log(`Total CVEs: ${stats.cve.total}`);
         console.log('By State:', stats.cve.byState);
@@ -48,26 +62,7 @@ async function main() {
             console.log(`${index + 1}. ${product.name} (${product.vendor}): ${product.cveCount} CVEs`);
         });
 
-        // Optional: Demo how to get CVEs for a specific vendor or product
-        if (stats.vendors.topVendors.length > 0) {
-            const topVendor = stats.vendors.topVendors[0].name;
-            console.log(`\nDemo: Getting products for vendor "${topVendor}"...`);
-            const products = await productService.getProductsByVendor(topVendor);
-            console.log(`Found ${products.length} products for ${topVendor}`);
-
-            if (products.length > 0) {
-                const productName = products[0].name;
-                console.log(`\nDemo: Getting CVEs for product "${productName}" from vendor "${topVendor}"...`);
-                const cves = await dbService.getCVEsByProduct(productName, topVendor);
-                console.log(`Found ${cves.length} CVEs for ${productName}`);
-
-                if (cves.length > 0) {
-                    console.log('First CVE ID:', cves[0].cveId);
-                }
-            }
-        }
-
-        // Step 6: Disconnect from the database
+        // Disconnect from the database
         await dbService.disconnect();
 
         console.log('CVE import process completed successfully');
@@ -79,11 +74,12 @@ async function main() {
     }
 }
 
-
-// Run the main function
+// Run the main function if called directly
 if (require.main === module) {
-    main();
-
+    // Check command line arguments for full sync mode
+    const args = process.argv.slice(2);
+    const fullSync = args.includes('--full-sync');
+    main(fullSync);
 }
 
-module.exports = {main};
+module.exports = { main };

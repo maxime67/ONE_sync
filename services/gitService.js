@@ -60,6 +60,87 @@ class GitService {
     }
 
     /**
+     * Sync repository (pull if exists, clone if not)
+     * Returns list of changed files since last sync
+     */
+    async syncRepository() {
+        try {
+            console.log(`Synchronizing repository at ${this.localPath}`);
+
+            // Create the directory if it doesn't exist
+            await fs.ensureDir(this.localPath);
+
+            // Initialize git
+            const git = simpleGit(this.localPath);
+
+            // Check if git repo already exists
+            const isRepo = await fs.pathExists(path.join(this.localPath, '.git'));
+
+            let changedFiles = [];
+
+            if (isRepo) {
+                // If repo exists, get the current commit hash before pulling
+                const beforePull = await git.revparse(['HEAD']);
+
+                // Pull the latest changes
+                console.log('Repository exists, pulling latest changes...');
+                await git.pull('origin', 'master');
+
+                // Get list of changed files between the previous and current commit
+                const afterPull = await git.revparse(['HEAD']);
+
+                if (beforePull !== afterPull) {
+                    console.log(`Repository updated from ${beforePull.substring(0, 7)} to ${afterPull.substring(0, 7)}`);
+                    changedFiles = await this.getChangedFilesBetweenCommits(beforePull, afterPull);
+                    console.log(`Found ${changedFiles.length} changed files`);
+                } else {
+                    console.log('No new changes in repository');
+                }
+            } else {
+                // If repo doesn't exist, perform the clone operation
+                console.log(`Repository doesn't exist, cloning target folder: ${this.targetFolder}`);
+                await this.cloneTargetFolder();
+
+                // For a fresh clone, we'll process all files
+                changedFiles = await this.getJsonFiles();
+                console.log(`Fresh clone: found ${changedFiles.length} JSON files to process`);
+            }
+
+            return changedFiles;
+        } catch (error) {
+            console.error('Error syncing repository:', error.message);
+            throw error;
+        }
+    }
+
+    /**
+     * Get changed files between two commits, filtered by JSON extension and target folder
+     */
+    async getChangedFilesBetweenCommits(oldCommit, newCommit) {
+        try {
+            const git = simpleGit(this.localPath);
+
+            // Get the diff between commits
+            const diffSummary = await git.diff([`${oldCommit}..${newCommit}`, '--name-only']);
+
+            // Split the result into lines
+            const changedPaths = diffSummary.split('\n').filter(line => line.trim() !== '');
+
+            // Filter by target folder and JSON extension
+            const targetPath = this.targetFolder.replace(/^\/|\/$/g, ''); // Remove leading/trailing slashes
+            const jsonFiles = changedPaths.filter(filePath => {
+                return filePath.startsWith(targetPath) && filePath.endsWith('.json');
+            });
+
+            // Convert relative paths to absolute paths
+            return jsonFiles.map(filePath => path.join(this.localPath, filePath));
+        } catch (error) {
+            console.error('Error getting changed files between commits:', error.message);
+            return [];
+        }
+    }
+
+    /**
      * Gets a list of JSON files in the target folder
      */
     async getJsonFiles() {

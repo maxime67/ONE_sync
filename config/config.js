@@ -22,5 +22,14 @@ module.exports = {
     // Logging configuration
     logging: {
         level: process.env.LOG_LEVEL || 'info'
+    },
+
+    // Cron configuration
+    cron: {
+        // Default: Run every day at midnight - see https://crontab.guru/ for syntax
+        schedule: process.env.CRON_SCHEDULE || '* * * * *',
+        // Optional: specific directories to check for changes (e.g., only latest years)
+        // If empty, will process all files in targetFolder
+        watchDirs: process.env.WATCH_DIRS ? process.env.WATCH_DIRS.split(',') : []
     }
 };
