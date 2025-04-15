@@ -30,7 +30,7 @@ async function main(fullSync = false) {
             // If no files changed, we can exit early
             if (jsonFiles.length === 0) {
                 console.log('No files changed. Nothing to process.');
-                await dbService.disconnect();
+                // await dbService.disconnect();
                 return;
             }
         }
@@ -43,14 +43,13 @@ async function main(fullSync = false) {
         await fileService.processBatch(jsonFiles, processFunction);
 
         // Disconnect from the database
-        await dbService.disconnect();
+        // await dbService.disconnect();
 
         console.log('CVE import process completed successfully');
     } catch (error) {
         console.error('Error in CVE import process:', error.message);
         // Ensure we disconnect from the database in case of error
-        await dbService.disconnect();
-        process.exit(1);
+        // await dbService.disconnect();
     }
 }
 

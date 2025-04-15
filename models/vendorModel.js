@@ -27,9 +27,6 @@ const vendorSchema = new mongoose.Schema({
     timestamps: true
 });
 
-// Create index for faster lookups
-vendorSchema.index({ name: 1 });
-
 const Vendor = mongoose.model('Vendor', vendorSchema);
 
 module.exports = Vendor;

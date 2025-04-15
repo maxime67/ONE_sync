@@ -113,49 +113,6 @@ class DBService {
         }
     }
 
-    /**
-     * Get statistics about the CVE collection
-     */
-    async getStats() {
-        try {
-            // Get CVE statistics
-            const totalCVEs = await CVE.countDocuments();
-
-            const byState = await CVE.aggregate([
-                { $group: { _id: '$state', count: { $sum: 1 } } }
-            ]);
-
-            const bySeverity = await CVE.aggregate([
-                { $match: { severity: { $exists: true } } },
-                { $group: { _id: '$severity', count: { $sum: 1 } } }
-            ]);
-
-            // Get vendor statistics
-            const vendorStats = await productService.getVendorStats();
-
-            // Get product statistics
-            const productStats = await productService.getProductStats();
-
-            return {
-                cve: {
-                    total: totalCVEs,
-                    byState: byState.reduce((acc, curr) => {
-                        acc[curr._id] = curr.count;
-                        return acc;
-                    }, {}),
-                    bySeverity: bySeverity.reduce((acc, curr) => {
-                        acc[curr._id] = curr.count;
-                        return acc;
-                    }, {})
-                },
-                vendors: vendorStats,
-                products: productStats
-            };
-        } catch (error) {
-            console.error(`Error getting stats: ${error.message}`);
-            throw error;
-        }
-    }
 
     /**
      * Get all CVEs for a specific vendor

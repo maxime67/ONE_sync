@@ -41,7 +41,6 @@ const productSchema = new mongoose.Schema({
 productSchema.index({ name: 1, vendor: 1 }, { unique: true });
 productSchema.index({ vendorName: 1 });
 
-// In models/productModel.js, update the findOrCreate static method:
 
 productSchema.statics.findOrCreate = async function(productData) {
     const { name, vendorId, vendorName, versions } = productData;
