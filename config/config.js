@@ -3,7 +3,7 @@ require('dotenv').config();
 module.exports = {
     // MongoDB configuration
     mongodb: {
-        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/test3'
+        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/ONE-DEV'
     },
 
     // GitHub repository configuration

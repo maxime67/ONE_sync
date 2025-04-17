@@ -61,6 +61,9 @@ class DBService {
             try {
                 // Extract data from raw JSON
                 const processedData = CVE.fromRawData(cveData, sourceFile);
+                if(processedData.state === "RESERVED") {
+                    return null;
+                }
 
                 try {
                     // Process vendor and product data

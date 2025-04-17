@@ -3,8 +3,6 @@ const { main } = require('../server');
 const config = require('../config/config');
 
 // Setup the cron job
-// Default: Run every day at midnight (0 0 * * *)
-// For testing, you can use a more frequent schedule like every minute: '* * * * *'
 cron.schedule(config.cron.schedule, async () => {
     console.log(`Running scheduled CVE import job at ${new Date().toISOString()}`);
     try {
