@@ -51,7 +51,7 @@ class DBService {
      */
     async upsertCVE(cveData, sourceFile) {
         try {
-            const cveId = cveData.CVE_data_meta?.ID;
+            const cveId = cveData.cveMetadata?.cveId;
 
             if (!cveId) {
                 console.warn('CVE ID missing in data, skipping');
@@ -61,9 +61,9 @@ class DBService {
             try {
                 // Extract data from raw JSON
                 const processedData = CVE.fromRawData(cveData, sourceFile);
-                if(processedData.state === "RESERVED") {
-                    return null;
-                }
+                // if(processedData.cveMetadata.state === "RESERVED") {
+                //     return null;
+                // }
 
                 try {
                     // Process vendor and product data

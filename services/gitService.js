@@ -43,12 +43,12 @@ class GitService {
                 );
 
                 // Perform the fetch
-                await git.raw(['fetch', '--depth=1', 'origin', 'master']);
-                await git.checkout('master');
+                await git.raw(['fetch', '--depth=1', 'origin', 'main']);
+                await git.checkout('main');
             } else {
                 // If repo exists, just pull the latest changes
                 console.log('Repository already exists, pulling latest changes...');
-                await git.pull('origin', 'master');
+                await git.pull('origin', 'main');
             }
 
             console.log('Repository cloned/updated successfully!');

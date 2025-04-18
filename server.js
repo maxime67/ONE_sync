@@ -52,7 +52,6 @@ async function main(fullSync = false) {
         // await dbService.disconnect();
     }
 }
-
 // Run the main function if called directly
 if (require.main === module) {
     // Check command line arguments for full sync mode

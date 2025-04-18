@@ -8,10 +8,10 @@ module.exports = {
 
     // GitHub repository configuration
     github: {
-        repoUrl: 'https://github.com/CVEProject/cvelist.git',
+        repoUrl: 'https://github.com/CVEProject/cvelistV5.git',
         localPath: './tmp/cvelist',
         // Specify the target folder to clone (to avoid cloning the entire repo)
-        targetFolder: '2025', // Adjust as needed (e.g., '2025/3xxx', '2025/31xxx', etc.)
+        targetFolder: 'cves',
     },
 
     // Batch processing configuration
@@ -26,10 +26,7 @@ module.exports = {
 
     // Cron configuration
     cron: {
-        // Default: Run every day at midnight - see https://crontab.guru/ for syntax
         schedule: process.env.CRON_SCHEDULE || '* * * * *',
-        // Optional: specific directories to check for changes (e.g., only latest years)
-        // If empty, will process all files in targetFolder
         watchDirs: process.env.WATCH_DIRS ? process.env.WATCH_DIRS.split(',') : []
     }
 };
