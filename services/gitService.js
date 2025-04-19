@@ -84,7 +84,7 @@ class GitService {
 
                 // Pull the latest changes
                 console.log('Repository exists, pulling latest changes...');
-                await git.pull('origin', 'master');
+                await git.pull('origin', 'main');
 
                 // Get list of changed files between the previous and current commit
                 const afterPull = await git.revparse(['HEAD']);
